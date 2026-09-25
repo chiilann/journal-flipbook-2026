@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>日誌合集｜翻頁電子書</title>
+<style>
+:root{--bg:#18283f;--gold:#d6ad4d;--panel:#223957;--text:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"Noto Sans CJK TC",sans-serif;min-height:100vh;display:flex;flex-direction:column}
+header{height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:#102038;border-bottom:1px solid #39516d}h1{font-size:18px;margin:0;font-weight:600}.hint{font-size:13px;color:#cbd7e5}
+main{flex:1;display:flex;align-items:center;justify-content:center;padding:18px;overflow:hidden}.book{display:flex;gap:5px;align-items:center;justify-content:center;max-width:1200px;width:100%}.page{background:#fff;box-shadow:0 8px 30px #07101d99;display:flex;align-items:center;justify-content:center;overflow:hidden}.page canvas{display:block;max-width:100%;max-height:calc(100vh - 180px);width:auto;height:auto}.blank{background:#e8e8e8}
+.controls{height:76px;background:#102038;display:flex;align-items:center;justify-content:center;gap:12px;border-top:1px solid #39516d}button{border:1px solid #627b98;background:var(--panel);color:#fff;border-radius:5px;padding:9px 15px;font-size:14px;cursor:pointer}button:hover{background:#315174}button:disabled{opacity:.4;cursor:not-allowed}.counter{min-width:125px;text-align:center;color:#e2e8f0}.progress{position:fixed;top:61px;left:0;height:3px;background:var(--gold);width:0;transition:width .2s}.loading{position:absolute;color:#d8e3ee;font-size:16px}.tip{position:fixed;bottom:6px;right:14px;color:#9fb2c7;font-size:11px}
+@media(max-width:700px){header{height:54px;padding:0 12px}.hint{display:none}main{padding:8px}.book{gap:0}.page canvas{max-height:calc(100vh - 155px)}.controls{height:66px;gap:6px}button{padding:8px 10px}.page.right{display:none}.tip{display:none}}
+</style>
+</head>
+<body>
+<header><h1>日誌合集｜翻頁電子書</h1><div class="hint">點擊頁面或使用方向鍵翻頁</div></header>
+<div class="progress" id="progress"></div>
+<main><div class="loading" id="loading">正在載入電子書……</div><div class="book"><div class="page left"><canvas id="left"></canvas></div><div class="page right"><canvas id="right"></canvas></div></div></main>
+<div class="controls"><button id="first">第一頁</button><button id="prev">上一頁</button><div class="counter" id="counter">載入中</div><button id="next">下一頁</button><button id="last">最後一頁</button></div><div class="tip">檔案：日誌合集_網頁最佳化.pdf</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
+<script type="module">
+const pdfjsLib=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+const parts=['pdf.part00', 'pdf.part01', 'pdf.part02', 'pdf.part03', 'pdf.part04', 'pdf.part05', 'pdf.part06', 'pdf.part07', 'pdf.part08', 'pdf.part09', 'pdf.part10', 'pdf.part11']; const bufs=await Promise.all(parts.map(x=>fetch(x).then(r=>r.arrayBuffer()))); const totalBytes=bufs.reduce((n,b)=>n+b.byteLength,0); const data=new Uint8Array(totalBytes); let off=0; for(const b of bufs){data.set(new Uint8Array(b),off);off+=b.byteLength} const pdf=await pdfjsLib.getDocument({data}).promise;
+let pageNo=1; const total=pdf.numPages;
+const loading=document.getElementById('loading'), counter=document.getElementById('counter'), progress=document.getElementById('progress');
+async function render(n,id){const canvas=document.getElementById(id); if(n>total){canvas.width=1;canvas.height=1;return} const p=await pdf.getPage(n); const base=p.getViewport({scale:1}); const maxH=window.innerHeight-180; const maxW=(window.innerWidth<700?window.innerWidth-20:(window.innerWidth-70)/2); const scale=Math.min(maxH/base.height,maxW/base.width,1.8); const vp=p.getViewport({scale}); canvas.width=vp.width;canvas.height=vp.height; await p.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise}
+async function show(){loading.style.display='block';const right=(window.innerWidth<700?null:pageNo+1);await render(pageNo,'left');if(right)await render(right,'right');else document.getElementById('right').width=1;counter.textContent=right?`第 ${pageNo}–${Math.min(right,total)} 頁／共 ${total} 頁`:`第 ${pageNo} 頁／共 ${total} 頁`;progress.style.width=(Math.min(pageNo+1,total)/total*100)+'%';document.getElementById('prev').disabled=pageNo<=1;document.getElementById('next').disabled=pageNo>=total;loading.style.display='none'}
+function turn(delta){pageNo=Math.max(1,Math.min(total,pageNo+delta));if(pageNo>1&&pageNo%2===0)pageNo--;show()}
+document.getElementById('prev').onclick=()=>turn(-2);document.getElementById('next').onclick=()=>turn(2);document.getElementById('first').onclick=()=>{pageNo=1;show()};document.getElementById('last').onclick=()=>{pageNo=total%2?total:total-1;show()};document.querySelector('.left').onclick=()=>turn(-2);document.querySelector('.right').onclick=()=>turn(2);document.onkeydown=e=>{if(e.key==='ArrowLeft')turn(-2);if(e.key==='ArrowRight'||e.key===' ')turn(2)};window.onresize=()=>show();show();
+</script>
+</body></html>
